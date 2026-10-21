@@ -37,6 +37,12 @@ ensure_server() {
     return
   fi
   mkdir -p "$LOG_DIR"
+  # Herdr restores the last layout on server start, which would bring back
+  # an empty corebrum workspace next to the one start_mesh builds.
+  local dir
+  dir=$(herdr session list --json | jq -r --arg name "$SESSION" \
+    '.sessions[] | select(.name == $name) | .session_dir')
+  [[ -n "$dir" ]] && rm -f "${dir}/session.json"
   setsid herdr --session "$SESSION" server >"$SERVER_LOG" 2>&1 </dev/null &
   local _try
   for _try in $(seq 1 50); do
