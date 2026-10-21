@@ -9,14 +9,14 @@ submenu in the Omarchy menu.
 3. [Install the Omarchy integration](#3-install-the-omarchy-integration)
 4. [Confirm the mesh sees this machine](#4-confirm-the-mesh-sees-this-machine)
 
-Tested with Corebrum 0.3.10 and Zenoh 1.10.1 on Omarchy (x86_64, glibc 2.44).
+Tested with Corebrum 0.3.11 and Zenoh 1.10.1 on Omarchy (x86_64, glibc 2.44).
 
 ## 1. Install Corebrum
 
 Omarchy is Arch, so skip the APT instructions in the Corebrum README and
 install the Linux release archive plus a matching Zenoh router. There is no
 Zenoh router package in the Arch repos (AUR's `zenoh-c` and `zenoh-cpp` are
-libraries, not the router). Corebrum 0.3.10 talks to Zenoh 1.10.1.
+libraries, not the router). Corebrum 0.3.11 talks to Zenoh 1.10.1.
 
 Omarchy already ships `unzip`, `python`, `jq`, and `herdr`. The one missing
 piece is pip, which Python workers use to install a task's own packages
@@ -31,7 +31,7 @@ Download and install Corebrum and zenohd into `~/.local`. `uname -m` picks the
 `x86_64` or `aarch64` build:
 
 ```bash
-COREBRUM_VERSION=0.3.10
+COREBRUM_VERSION=0.3.11
 ZENOH_VERSION=1.10.1
 ARCH=$(uname -m)
 DL=$(mktemp -d)
@@ -51,13 +51,13 @@ install -m 755 "$DL/zenoh/zenohd" ~/.local/bin/zenohd
 install -m 755 "$DL"/zenoh/libzenoh_plugin_{rest,storage_manager}.so ~/.local/bin/
 ```
 
-| Corebrum 0.3.10 archive | sha256 |
+| Corebrum 0.3.11 archive | sha256 |
 |---|---|
-| `x86_64` | `d046e5329de47912ca0230b00c534d71d2c4439cdbdb71fe4209270ea6d8c1d2` |
-| `aarch64` | `1978da5f021fd5b061a712db503c978dfd6a7eaf71faee2448ecdbab489e0164` |
+| `x86_64` | `f6c043876f44b6c99800361b808b7954a4a582643cbc6f20ff12b7972fd14248` |
+| `aarch64` | `15a6dfe63bc1432b73cde472d2bbd78ea3e8b4a5e73d4d185d8c1d1e55fb8f25` |
 
 > The `.sha256` files published next to the archives on S3 currently do not
-> match the archives (for 0.3.9 as well), so compare against this table instead.
+> match the archives (for 0.3.9 and 0.3.10 as well), so compare against this table instead.
 
 If you have access to the private repo and are logged in with `gh`, this is the
 same archive:
@@ -78,7 +78,7 @@ Why the layout matters:
 `~/.local/bin` is already on Omarchy's PATH. Check:
 
 ```bash
-corebrum --version   # corebrum 0.3.10
+corebrum --version   # corebrum 0.3.11
 zenohd --version     # zenohd v1.10.1
 python3 --version
 ```
