@@ -156,7 +156,7 @@ With the mesh running:
 corebrum compute-stats
 ```
 
-This machine should show up with one worker per core. The daemon pins each
+This machine should show up with one worker per core. A second machine on the same network, started the same way, shows up in the same `compute-stats`. The daemon pins each
 Python worker to a core; look for `pinned to CPU` in the `daemon` pane. The web
 UI is at http://127.0.0.1:6502 (or **Corebrum Web** in the app launcher).
 `corebrum cmos` opens the interactive shell.
@@ -167,10 +167,12 @@ To run the parts by hand, use three terminals. Zenoh's listen address uses a
 slash; Corebrum's connect address uses `://`.
 
 ```bash
-zenohd -l tcp/127.0.0.1:7447                                              # ready: "Zenoh can be reached at: tcp/127.0.0.1:7447"
+zenohd -l tcp/0.0.0.0:7447                                                # ready: "Zenoh can be reached at: tcp/0.0.0.0:7447"
 corebrum daemon --zenoh-router tcp://127.0.0.1:7447 --capabilities python
 corebrum web --zenoh-router tcp://127.0.0.1:7447                          # ready: "Serving React app from: .../dist"
 ```
+
+The router listens on every interface. Zenoh's multicast scouting, which `zenohd` leaves on unless you pass `--no-multicast-scouting`, links that router to another Corebrum router on the same network. Corebrum itself stays on `127.0.0.1`. A router bound only to loopback shows this machine's cores and cannot see the other machine.
 
 Closing those terminals stops the mesh.
 

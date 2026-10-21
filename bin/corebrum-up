@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Start Zenoh and Corebrum in a Herdr session named "corebrum".
-# Zenoh listens with a slash (tcp/127.0.0.1:7447). Corebrum connects with ://.
+# The router listens on every interface (tcp/0.0.0.0:7447) so another Corebrum
+# machine on this network can scout it. Corebrum on this machine still connects
+# to the local router (tcp://127.0.0.1:7447). Do not pass --no-multicast-scouting.
 # Detach with Ctrl+Space then d. The panes keep running. `corebrum-up stop` ends them.
 set -euo pipefail
 
@@ -9,7 +11,7 @@ LABEL=corebrum
 BIN="${HOME}/.local/bin"
 ZENOHD="${BIN}/zenohd"
 COREBRUM="${BIN}/corebrum"
-LISTEN='tcp/127.0.0.1:7447'
+LISTEN='tcp/0.0.0.0:7447'
 ROUTER='tcp://127.0.0.1:7447'
 LOG_DIR="${HOME}/.local/state/corebrum"
 SERVER_LOG="${LOG_DIR}/herdr-server.log"
