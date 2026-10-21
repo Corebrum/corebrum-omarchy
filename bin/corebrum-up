@@ -13,6 +13,8 @@ LISTEN='tcp/127.0.0.1:7447'
 ROUTER='tcp://127.0.0.1:7447'
 LOG_DIR="${HOME}/.local/state/corebrum"
 SERVER_LOG="${LOG_DIR}/herdr-server.log"
+SHIM_DIR="${LOG_DIR}/shim"
+WEB_URL='http://127.0.0.1:6502'
 
 hr() {
   herdr --session "$SESSION" "$@"
@@ -55,6 +57,32 @@ ensure_server() {
   exit 1
 }
 
+# `corebrum web` opens its page with xdg-open, which lands as a tab in a normal
+# browser window that stop cannot safely close. This xdg-open, on the web pane's
+# PATH only, drops that call so open_web_window can open an app window instead.
+write_open_shim() {
+  mkdir -p "$SHIM_DIR"
+  cat >"${SHIM_DIR}/xdg-open" <<'SH'
+#!/usr/bin/env bash
+[[ ${1:-} =~ ^https?://(localhost|127\.0\.0\.1):6502(/|$) ]] && exit 0
+exec /usr/bin/xdg-open "$@"
+SH
+  chmod +x "${SHIM_DIR}/xdg-open"
+}
+
+web_window_addresses() {
+  command -v hyprctl >/dev/null || return 0
+  hyprctl clients -j 2>/dev/null |
+    jq -r '.[] | select(.class | test("-127\\.0\\.0\\.1__-")) | .address'
+}
+
+open_web_window() {
+  [[ -z $(web_window_addresses) ]] || return 0
+  # Detached: with no browser running it starts one in the foreground, which
+  # would hold up the herdr attach and die with this terminal.
+  setsid -f omarchy-launch-webapp "$WEB_URL" >/dev/null 2>&1 </dev/null || true
+}
+
 wait_shell() {
   hr pane wait-output "$1" --match "❯" --timeout 8000 >/dev/null || true
 }
@@ -81,17 +109,31 @@ start_mesh() {
   wait_shell "$mid"
   hr pane run "$mid" "${COREBRUM} daemon --zenoh-router ${ROUTER} --capabilities python"
   wait_shell "$web"
-  hr pane run "$web" "${COREBRUM} web --zenoh-router ${ROUTER}"
+  write_open_shim
+  hr pane run "$web" "PATH=${SHIM_DIR}:\$PATH ${COREBRUM} web --zenoh-router ${ROUTER}"
 
   if ! hr pane wait-output "$mid" --match "pinned to CPU" --timeout 20000 >/dev/null; then
     echo "The daemon did not report workers pinned to cores. The daemon pane has the log." >&2
   fi
   if ! hr pane wait-output "$web" --match "Serving React app" --timeout 20000 >/dev/null; then
     echo "The web UI did not report that it is serving. The web pane has the log." >&2
+  else
+    open_web_window
   fi
 }
 
+# Close Corebrum Web app windows. Chromium-based browsers give an --app window
+# a class like chrome-127.0.0.1__-Default; normal browser windows are left alone.
+close_web_windows() {
+  local addr
+  for addr in $(web_window_addresses); do
+    hyprctl dispatch "hl.dsp.window.close({ window = \"address:${addr}\" })" >/dev/null 2>&1 ||
+      hyprctl dispatch closewindow "address:${addr}" >/dev/null 2>&1 || true
+  done
+}
+
 cmd_stop() {
+  close_web_windows
   if session_running; then
     herdr session stop "$SESSION" --json >/dev/null
     echo "Stopped the ${SESSION} Herdr session."

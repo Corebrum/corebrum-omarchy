@@ -122,8 +122,9 @@ Then start the mesh any of these ways:
 `corebrum-up` runs the router, the daemon, and the web UI as three panes
 (`zenoh`, `daemon`, `web`) in a Herdr session named `corebrum`, separate from
 your default Herdr session. It waits for each part to report ready, and will
-not start a second copy or start when ports 7447 / 6502 are taken. Detach with
-`Ctrl+Space` then `d`; the mesh keeps running. `corebrum-up stop` ends it.
+not start a second copy or start when ports 7447 / 6502 are taken. Once the web
+UI is serving it opens it as a **Corebrum Web** app window. Detach with
+`Ctrl+Space` then `d`; the mesh keeps running. `corebrum-up stop` ends it and closes the Corebrum Web window.
 
 ### What gets installed
 
