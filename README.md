@@ -176,6 +176,8 @@ corebrum web --zenoh-router tcp://127.0.0.1:7447                          # read
 
 `corebrum-up` writes `~/.config/corebrum/zenohd.json5` before it starts the router. That file listens on every interface and tells Zenoh to connect to other routers it discovers. Corebrum itself stays on `127.0.0.1`. A router started with only `zenohd -l tcp/0.0.0.0:7447` can be reached and still will not join the other machine.
 
+Omarchy's UFW drops new inbound connections and still answers ping. `./install.sh` opens TCP 7447 and UDP 7446 while UFW is active. The web UI stays on `127.0.0.1:6502`.
+
 Closing those terminals stops the mesh.
 
 ## Notes

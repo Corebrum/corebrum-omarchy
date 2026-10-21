@@ -228,9 +228,31 @@ cmd_up() {
   exec herdr --session "$SESSION"
 }
 
+# Omarchy's UFW answers ping and drops new connections. Zenoh can scout and
+# still never open a session. 7446/udp is discovery; 7447/tcp is the router.
+cmd_firewall() {
+  if ! command -v ufw >/dev/null; then
+    echo "    ufw is not installed; skipped"
+    return 0
+  fi
+  if ! sudo -v; then
+    echo "    sudo was not available. Other machines stay invisible until you run:" >&2
+    echo "    sudo ufw allow 7447/tcp comment 'Corebrum Zenoh router'" >&2
+    echo "    sudo ufw allow 7446/udp comment 'Corebrum Zenoh scouting'" >&2
+    return 0
+  fi
+  if ! sudo ufw status | grep -q 'Status: active'; then
+    echo "    ufw is not active; skipped"
+    return 0
+  fi
+  sudo ufw allow 7447/tcp comment 'Corebrum Zenoh router'
+  sudo ufw allow 7446/udp comment 'Corebrum Zenoh scouting'
+}
+
 case "${1:-up}" in
   up | start) cmd_up ;;
   stop | down) cmd_stop ;;
+  firewall) cmd_firewall ;;
   *)
     echo "Usage: corebrum-up [up|stop]" >&2
     exit 2

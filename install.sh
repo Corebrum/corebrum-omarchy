@@ -95,6 +95,10 @@ while lines and not lines[-1].strip():
 menu.write_text("\n".join(lines + ["", snippet, "}"]) + "\n")
 PY
 
+step "Opening Zenoh through the firewall"
+# Prompt lives in corebrum-up so a later reinstall opens the same two ports.
+"${BIN}/corebrum-up" firewall
+
 step "Enabling the bar widget"
 if $updating; then
   # Plugin hot reload can keep running the old QML, so restart the shell.
@@ -112,4 +116,5 @@ cat <<EOF
   App launcher (Super+Space): "Corebrum" and "Corebrum Web"
   Bar brain icon: left-click = start / stop, right-click = Corebrum menu
   Move the icon:  omarchy bar move ${PLUGIN_ID} --section center
+  Other Omarchy machines on this network can join when UFW allows TCP 7447 and UDP 7446.
 EOF
