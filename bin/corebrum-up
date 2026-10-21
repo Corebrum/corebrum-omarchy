@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# Start Zenoh and Corebrum in a Herdr session named "corebrum".
+# Zenoh listens with a slash (tcp/127.0.0.1:7447). Corebrum connects with ://.
+# Detach with Ctrl+Space then d. The panes keep running. `corebrum-up stop` ends them.
+set -euo pipefail
+
+SESSION=corebrum
+LABEL=corebrum
+BIN="${HOME}/.local/bin"
+ZENOHD="${BIN}/zenohd"
+COREBRUM="${BIN}/corebrum"
+LISTEN='tcp/127.0.0.1:7447'
+ROUTER='tcp://127.0.0.1:7447'
+LOG_DIR="${HOME}/.local/state/corebrum"
+SERVER_LOG="${LOG_DIR}/herdr-server.log"
+
+hr() {
+  herdr --session "$SESSION" "$@"
+}
+
+session_running() {
+  herdr session list --json | jq -e --arg name "$SESSION" \
+    '.sessions[] | select(.name == $name and .running == true)' >/dev/null
+}
+
+workspace_id() {
+  hr workspace list | jq -r --arg label "$LABEL" \
+    '.result.workspaces[] | select(.label == $label) | .workspace_id' | head -n 1
+}
+
+ports_busy() {
+  ss -ltnH | awk '{ print $4 }' | grep -qE '(^|:)(7447|6502)$'
+}
+
+ensure_server() {
+  if session_running; then
+    return
+  fi
+  mkdir -p "$LOG_DIR"
+  setsid herdr --session "$SESSION" server >"$SERVER_LOG" 2>&1 </dev/null &
+  local _try
+  for _try in $(seq 1 50); do
+    if session_running && hr workspace list >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.1
+  done
+  echo "Herdr session ${SESSION} did not start. See ${SERVER_LOG}" >&2
+  exit 1
+}
+
+wait_shell() {
+  hr pane wait-output "$1" --match "❯" --timeout 8000 >/dev/null || true
+}
+
+start_mesh() {
+  local created root mid web tab
+  created=$(hr workspace create --cwd "$HOME" --label "$LABEL" --no-focus)
+  root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
+  tab=$(jq -r '.result.tab.tab_id' <<<"$created")
+  hr tab rename "$tab" mesh >/dev/null
+  mid=$(hr pane split "$root" --direction down --ratio 0.34 --cwd "$HOME" --no-focus | jq -r '.result.pane.pane_id')
+  web=$(hr pane split "$mid" --direction down --ratio 0.5 --cwd "$HOME" --no-focus | jq -r '.result.pane.pane_id')
+  hr pane rename "$root" zenoh >/dev/null
+  hr pane rename "$mid" daemon >/dev/null
+  hr pane rename "$web" web >/dev/null
+
+  wait_shell "$root"
+  hr pane run "$root" "${ZENOHD} -l ${LISTEN}"
+  if ! hr pane wait-output "$root" --match "Zenoh can be reached" --timeout 20000 >/dev/null; then
+    echo "zenohd did not report that it is listening. The zenoh pane has the error." >&2
+    return 0
+  fi
+
+  wait_shell "$mid"
+  hr pane run "$mid" "${COREBRUM} daemon --zenoh-router ${ROUTER} --capabilities python"
+  wait_shell "$web"
+  hr pane run "$web" "${COREBRUM} web --zenoh-router ${ROUTER}"
+
+  if ! hr pane wait-output "$mid" --match "pinned to CPU" --timeout 20000 >/dev/null; then
+    echo "The daemon did not report workers pinned to cores. The daemon pane has the log." >&2
+  fi
+  if ! hr pane wait-output "$web" --match "Serving React app" --timeout 20000 >/dev/null; then
+    echo "The web UI did not report that it is serving. The web pane has the log." >&2
+  fi
+}
+
+cmd_stop() {
+  if session_running; then
+    herdr session stop "$SESSION" --json >/dev/null
+    echo "Stopped the ${SESSION} Herdr session."
+  else
+    echo "The ${SESSION} Herdr session is not running."
+  fi
+}
+
+# Focus a desktop window that already has a Herdr client attached to the
+# session, whichever terminal opened it. Returns 1 when there is none.
+focus_attached_window() {
+  command -v hyprctl >/dev/null || return 1
+  local clients pid p addr
+  clients=$(hyprctl clients -j 2>/dev/null) || return 1
+  for pid in $(pgrep -u "$USER" -x herdr); do
+    [[ $(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null) == "herdr --session ${SESSION} " ]] || continue
+    p=$pid
+    while [[ -n "$p" && "$p" -gt 1 ]]; do
+      addr=$(jq -r --argjson p "$p" '[.[] | select(.pid == $p)][0].address // empty' <<<"$clients")
+      if [[ -n "$addr" ]]; then
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:${addr}\" })" >/dev/null 2>&1 ||
+          hyprctl dispatch focuswindow "address:${addr}" >/dev/null
+        return 0
+      fi
+      p=$(awk '{ print $4 }' "/proc/${p}/stat" 2>/dev/null)
+    done
+  done
+  return 1
+}
+
+cmd_up() {
+  if session_running && focus_attached_window; then
+    exit 0
+  fi
+
+  command -v herdr >/dev/null || { echo "herdr is not installed." >&2; exit 1; }
+  command -v jq >/dev/null || { echo "jq is not installed." >&2; exit 1; }
+  [[ -x "$ZENOHD" && -x "$COREBRUM" ]] || {
+    echo "Expected ${ZENOHD} and ${COREBRUM}." >&2
+    exit 1
+  }
+
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    exec omarchy-launch-or-focus-tui --app-id=org.corebrum.mesh "$0" up
+  fi
+
+  if session_running; then
+    local existing
+    existing=$(workspace_id || true)
+    if [[ -n "$existing" ]]; then
+      exec herdr --session "$SESSION"
+    fi
+  fi
+
+  if ports_busy; then
+    echo "Port 7447 or 6502 is already in use." >&2
+    echo "Stop the other Zenoh or Corebrum process, then run corebrum-up again." >&2
+    exit 1
+  fi
+
+  ensure_server
+  start_mesh
+  exec herdr --session "$SESSION"
+}
+
+case "${1:-up}" in
+  up | start) cmd_up ;;
+  stop | down) cmd_stop ;;
+  *)
+    echo "Usage: corebrum-up [up|stop]" >&2
+    exit 2
+    ;;
+esac

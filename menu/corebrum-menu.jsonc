@@ -1,0 +1,6 @@
+  // Corebrum mesh (also opened by right-clicking the bar brain)
+  "corebrum": {"icon":"󰧑","label":"Corebrum"},
+  "corebrum.start": {"icon":"","label":"Start Mesh","when":"! ss -ltnH 'sport = :7447' | grep -q .","action":"~/.local/bin/corebrum-up; omarchy-shell corebrum.mesh refresh"},
+  "corebrum.attach": {"icon":"","label":"Open Session","when":"ss -ltnH 'sport = :7447' | grep -q .","action":"~/.local/bin/corebrum-up"},
+  "corebrum.web": {"icon":"󰖟","label":"Open Web UI","when":"ss -ltnH 'sport = :6502' | grep -q .","action":"omarchy-launch-or-focus-webapp Corebrum http://127.0.0.1:6502"},
+  "corebrum.stop": {"icon":"","label":"Stop Mesh","when":"herdr session list --json | jq -e '.sessions[] | select(.name == \"corebrum\" and .running)' >/dev/null","action":"~/.local/bin/corebrum-up stop | xargs -0 notify-send -a Corebrum; omarchy-shell corebrum.mesh refresh"},
