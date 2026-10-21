@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Start Zenoh and Corebrum in a Herdr session named "corebrum".
-# The router listens on every interface (tcp/0.0.0.0:7447) so another Corebrum
-# machine on this network can scout it. Corebrum on this machine still connects
-# to the local router (tcp://127.0.0.1:7447). Do not pass --no-multicast-scouting.
+# The router listens on every interface and connects to other routers it scouts.
+# Zenoh's default is to discover those routers and not open a session.
+# Corebrum on this machine still connects to the local router (tcp://127.0.0.1:7447).
 # Detach with Ctrl+Space then d. The panes keep running. `corebrum-up stop` ends them.
 set -euo pipefail
 
@@ -11,8 +11,8 @@ LABEL=corebrum
 BIN="${HOME}/.local/bin"
 ZENOHD="${BIN}/zenohd"
 COREBRUM="${BIN}/corebrum"
-LISTEN='tcp/0.0.0.0:7447'
 ROUTER='tcp://127.0.0.1:7447'
+ZENOH_CONFIG="${HOME}/.config/corebrum/zenohd.json5"
 LOG_DIR="${HOME}/.local/state/corebrum"
 SERVER_LOG="${LOG_DIR}/herdr-server.log"
 SHIM_DIR="${LOG_DIR}/shim"
@@ -85,6 +85,32 @@ open_web_window() {
   setsid -f omarchy-launch-webapp "$WEB_URL" >/dev/null 2>&1 </dev/null || true
 }
 
+# Zenoh discovers other routers by multicast and, by default, does not connect
+# to them. router: ["router"] is that connection. Corebrum stays on 127.0.0.1.
+write_zenoh_config() {
+  mkdir -p "$(dirname "$ZENOH_CONFIG")"
+  cat >"$ZENOH_CONFIG" <<'EOF'
+{
+  mode: "router",
+  listen: {
+    endpoints: ["tcp/0.0.0.0:7447"],
+  },
+  scouting: {
+    multicast: {
+      enabled: true,
+      autoconnect: { router: ["router"], peer: ["router", "peer"], client: ["router", "peer"] },
+      autoconnect_strategy: { router: { to_router: "always" }, peer: { to_router: "always", to_peer: "always" } },
+    },
+    gossip: {
+      enabled: true,
+      autoconnect: { router: ["router"], peer: ["router", "peer"], client: ["router", "peer"] },
+      autoconnect_strategy: { router: { to_router: "always" }, peer: { to_router: "always", to_peer: "always" } },
+    },
+  },
+}
+EOF
+}
+
 wait_shell() {
   hr pane wait-output "$1" --match "❯" --timeout 8000 >/dev/null || true
 }
@@ -102,7 +128,8 @@ start_mesh() {
   hr pane rename "$web" web >/dev/null
 
   wait_shell "$root"
-  hr pane run "$root" "${ZENOHD} -l ${LISTEN}"
+  write_zenoh_config
+  hr pane run "$root" "${ZENOHD} -c ${ZENOH_CONFIG}"
   if ! hr pane wait-output "$root" --match "Zenoh can be reached" --timeout 20000 >/dev/null; then
     echo "zenohd did not report that it is listening. The zenoh pane has the error." >&2
     return 0
