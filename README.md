@@ -141,7 +141,7 @@ not start a second copy or start when ports 7447 / 6502 are taken. Detach with
 The brain icon is lit when zenohd (port 7447), the daemon, and the web UI
 (port 6502) are all up, and dimmed when everything is stopped. Hover for details.
 
-- **Left-click**: start the mesh, or focus the window already showing it
+- **Left-click**: start the mesh when it is down, stop it when any part is up
 - **Right-click**: Corebrum menu (Start / Open Session / Open Web UI / Stop)
 
 Change the check interval with `omarchy bar set corebrum.mesh refreshIntervalSec 10`.

@@ -2,7 +2,7 @@
 # Install the Corebrum Omarchy integration:
 #   - corebrum-up into ~/.local/bin (the previous copy is backed up)
 #   - "Corebrum" and "Corebrum Web" app launcher entries with the Corebrum icon
-#   - the corebrum.mesh bar widget (left = start/attach, right = Corebrum menu)
+#   - the corebrum.mesh bar widget (left = start/stop, right = Corebrum menu)
 #   - a "Corebrum" submenu in the Omarchy menu
 # Safe to re-run: every step replaces what an earlier run installed.
 set -euo pipefail
@@ -110,6 +110,6 @@ fi
 step "Done"
 cat <<EOF
   App launcher (Super+Space): "Corebrum" and "Corebrum Web"
-  Bar brain icon: left-click = start / open the session, right-click = Corebrum menu
+  Bar brain icon: left-click = start / stop, right-click = Corebrum menu
   Move the icon:  omarchy bar move ${PLUGIN_ID} --section center
 EOF

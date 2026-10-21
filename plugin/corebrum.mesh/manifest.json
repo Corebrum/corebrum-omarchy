@@ -5,14 +5,14 @@
   "version": "0.1.0",
   "author": "clm",
   "license": "MIT",
-  "description": "Corebrum mesh status in the bar: start or attach, open the web UI, stop.",
+  "description": "Corebrum mesh status in the bar: start or stop, open the session or web UI.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "Corebrum",
-    "description": "Left = start/attach · right = Corebrum menu",
+    "description": "Left = start/stop · right = Corebrum menu",
     "category": "Plugin",
     "allowMultiple": false,
     "defaultSection": "right",

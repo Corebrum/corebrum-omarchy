@@ -5,8 +5,8 @@ import qs.Commons
 import qs.Ui
 
 // Corebrum mesh status. Lit when zenohd (7447), the daemon, and the web UI
-// (6502) are all up; dimmed when stopped. Left starts or attaches to the
-// herdr session via corebrum-up, right opens the Corebrum menu.
+// (6502) are all up; dimmed when stopped. Left toggles the mesh: it starts
+// it when nothing is up and stops it otherwise. Right opens the Corebrum menu.
 BarWidget {
   id: root
   moduleName: "corebrum.mesh"
@@ -30,7 +30,7 @@ BarWidget {
     function mark(ok) { return ok ? "up" : "down" }
     var head = running ? "Corebrum running" : (upCount === 0 ? "Corebrum stopped" : "Corebrum degraded")
     return head + "\nzenoh " + mark(zenoh) + " · daemon " + mark(daemon) + " · web " + mark(web)
-      + "\nLeft: " + (upCount === 0 ? "start" : "attach") + " · Right: menu"
+      + "\nLeft: " + (upCount === 0 ? "start" : "stop") + " · Right: menu"
   }
 
   implicitWidth: button.implicitWidth
@@ -91,7 +91,10 @@ BarWidget {
     onPressed: function(b) {
       if (!root.bar) return
       if (b === Qt.RightButton) root.bar.run("omarchy menu toggle corebrum")
-      else root.bar.run(root.upCmd)
+      // A clean stop first so a session left with dead panes is rebuilt
+      // instead of reattached.
+      else if (root.upCount === 0) root.bar.run(root.upCmd + " stop >/dev/null; " + root.upCmd)
+      else root.bar.run(root.upCmd + " stop | xargs -0 notify-send -a Corebrum")
       root.soon()
     }
   }
